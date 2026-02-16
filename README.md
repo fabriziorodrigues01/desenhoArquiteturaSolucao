@@ -68,7 +68,7 @@ A partir de uma requisição externa, O cliente (ex: e-commerce) envia uma solic
 
 Segue o Fluxo atual de negócio.
 
-![Imagem local](./images/diagrama de negocio.png)
+![Diagrama BPMN](/images/diagrama de negocio.png)
 
 Abaixo, detalhe das etapas desse processo:
 
