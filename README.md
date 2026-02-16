@@ -96,7 +96,7 @@ Após gerar a linha digitável e o código de barras, o mainframe devolve os dad
 
 Segue o Diagrama dos componentes atuais.
 
-![][image2]
+![Diagrama C4](./imagens/diagrama%20C4%20-%20cenario%20atual.png)
 
 4. ## **Oportunidades e Soluções – TO-BE** {#oportunidades-e-soluções-–-to-be}
 
@@ -129,7 +129,7 @@ Os componentes para compor esta arquitetura são definidos em Camada de Entrada 
 * **Proxy COBOL (Consumidor):** Recebe os dados e executa o EXEC SQL INSERT no DB2 
 
 
-*![][image3]*
+![Diagrama Infra](./imagens/diagrama%20de%20arquitetura%20cenario%201%20-%20migracao%20modelo%20hibrido.png)
 
 ***Processo de Refatoração com os padrões recomendados (clean architecture \+ DDD):***
 
@@ -246,9 +246,11 @@ A aplicação Java (Spring Boot) pode usar o SDK para buscar os parâmetros no
 Este cenário apresenta a completa jornada de modernização. A estratégia de IaC é para garantir que por exemplo o banco de dados e o cluster de containers suba em minutos.  
 O sistema por se tratar principalmente do setor Bancário, proteger a camada de rede se faz necessário.
 
-Segue o diagrama C4 e o diagrama de arquitetura completo abaixo: ![][image4]
+Segue o diagrama C4 e o diagrama de arquitetura completo abaixo: 
 
-*![][image5]*
+![Diagrama Infra](./imagens/diagrama%20de%20infra%20cenario%202%20-%20migracao%20full.png)
+
+![Diagrama C4](./imagens/diagrama%20C4%20-%20nivel%20c2%20-%20Proposta.png)
 
 2. # **Anexos** {#anexos}
 
