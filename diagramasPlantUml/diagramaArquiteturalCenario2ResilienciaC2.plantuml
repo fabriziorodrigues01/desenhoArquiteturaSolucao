@@ -1,0 +1,108 @@
+@startuml
+!theme plain
+skinparam componentStyle uml2
+
+title Cenário 2: Full Cloud (Resiliência, DevOps e Configuração Centralizada)
+
+package "External" {
+    [Cliente App/Web] as Cliente #pink
+}
+
+package "AWS Cloud (Region: us-east-1)" #white {
+
+    [CloudFront & WAF] as Edge
+    
+    package "AWS Developer Tools" #D5E8D4 {
+        [CodeCommit] as Source
+        [CodePipeline] as Pipeline
+        [CodeBuild] as Build
+        [ECR] as ECR
+    }
+    
+    package "Management & Governance" #E1D5E7 {
+        [SSM Parameter Store] as SSM
+        [AWS Secrets Manager] as Secrets
+        [KMS (Encryption)] as KMS
+    }
+
+    package "VPC (Multi-AZ)" #f8f9fa {
+        package "Private App Subnets" #f4faff {
+            [Internal ALB] as ALB
+            package "Amazon EKS Cluster" #white {
+                [Boleto Pod (Producer)] as P2
+                [Boleto Worker (Consumer)] as Worker
+            }
+        }
+        
+        ' Resiliência de Mensageria
+        queue "Amazon SQS" as SQS #orange
+        queue "SQS DLQ" as DLQ #red
+        
+        package "Private Data Subnets" #fff9f4 {
+            database "Amazon Aurora" as DB
+        }
+    }
+    
+    [API Gateway] as APIGW #purple
+    [S3] as S3
+    [Amazon SES] as SES
+    [OpenSearch/Kibana] as ELK
+}
+
+' Fluxo de Entrada
+Cliente -up-> Edge : HTTPS (SSL)
+P2 -up-> Cliente : 4. Retorna Protocolo (Sucesso Imediato)
+Edge --> APIGW : Request Filtrada
+APIGW -> ALB
+ALB -> P2 : 1. Solicita Boleto
+
+' Fluxo de Resiliência (Async)
+P2 -> SQS : 2. Enfileira Intenção (Persistência em Fila)
+SQS -down-> DLQ : (Se falha persistente)
+Worker <- SQS : 3. Consome Mensagem
+
+
+' Relacionamentos CI/CD
+Source -> Pipeline
+Pipeline -> Build
+Build -> ECR
+Build -> P2 : Deploy (Helm)
+Build -> Worker : Deploy (Helm)
+
+' Injeção de Configuração e Segredos
+SSM .right.> P2 : ´ ´
+SSM .right.> Worker : Injeta Configs
+Secrets .right.> Worker : Injeta Credenciais (DB)
+KMS -up-> SSM : Criptografia
+
+' Segurança, Dados e Notificação
+Worker -down-> DB : 5. SQL (Port 5432)
+Worker -up-> S3 : 6. Upload PDF
+Worker -up-> SES : 7. Dispara E-mail ao Cliente
+Worker .down.> ELK : Logs JSON
+
+' Notas Técnicas
+note bottom of SQS
+  **Resiliência:**
+  Isola falhas do DB. Se o Aurora 
+  estiver em failover, a mensagem 
+  aguarda na fila para retentativa.
+end note
+
+note right of SES
+  **Notificação:**
+  Envia o link do PDF (S3) 
+  direto para o e-mail do cliente.
+end note
+
+note bottom of P2
+  **SG-EKS-Nodes:**
+  - Ingress: Apenas ALB
+end note
+
+note bottom of DB
+  **SG-Database:**
+  - Ingress: Apenas Worker Nodes
+  - Port: 5432
+end note
+@enduml

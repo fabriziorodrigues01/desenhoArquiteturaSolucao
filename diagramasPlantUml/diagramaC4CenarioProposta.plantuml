@@ -1,0 +1,92 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+' Configurações de layout
+LAYOUT_WITH_LEGEND()
+title Diagrama de Contêineres (C2) - Sistema de Emissão de Boletos (Full Cloud Resiliente)
+
+Person(cliente, "Cliente Externo", "Usuário do E-commerce/App")
+
+System_Boundary(aws_region, "AWS Region (us-east-1)") {
+    
+    System_Boundary(devops, "AWS Developer Tools") {
+        Container(codecommit, "CodeCommit", "Git", "Repositório de código fonte")
+        Container(codepipeline, "CodePipeline", "Orchestrator", "Orquestração de CI/CD")
+        Container(codebuild, "CodeBuild", "Build Tool", "Build e Scan de Segurança")
+        Container(ecr, "Amazon ECR", "Registry", "Imagens Docker")
+    }
+
+    System_Boundary(edge_security, "Borda e Segurança") {
+        Container(cloudfront, "CloudFront & WAF", "CDN/WAF", "Proteção DDoS e Web Firewall")
+        Container(apigw, "API Gateway", "API Management", "Throttling e Exposição")
+        Container(cognito, "Amazon Cognito", "IdP", "Gestão JWT")
+    }
+
+    System_Boundary(management, "Management & Governance") {
+        Container(ssm, "SSM Parameter Store", "Config", "Feature Flags e URLs")
+        Container(secrets, "Secrets Manager", "Security", "Senhas com rotação")
+    }
+
+    System_Boundary(vpc, "VPC (Multi-AZ)") {
+        
+        System_Boundary(app_subnet, "Private App Subnets") {
+            Container(alb, "Internal ALB", "Load Balancer", "Inbound EKS")
+            
+            System_Boundary(eks_cluster, "Amazon EKS Cluster") {
+                Container(boleto_producer, "Boleto Service (Producer)", "Java, Spring Boot", "Valida entrada e posta no SQS")
+                Container(boleto_worker, "Boleto Worker (Consumer)", "Java, Spring Boot", "Gera PDF, Persiste, Identifica Registro e Notifica")
+            }
+        }
+
+        System_Boundary(messaging, "Messaging Layer") {
+            Container(sqs, "Amazon SQS", "Queue", "Buffer de Mensagens (Resiliência)")
+            Container(dlq, "SQS DLQ", "Dead Letter Queue", "Isolamento de Falhas Críticas")
+        }
+
+        System_Boundary(data_subnet, "Private Data Subnets") {
+            ContainerDb(aurora, "Amazon Aurora", "PostgreSQL", "Persistência Transacional")
+        }
+    }
+
+    Container(s3, "Amazon S3", "Object Storage", "Buckets de PDFs")
+    Container(ses, "Amazon SES", "Email Service", "Envio de Notificações")
+    Container(elk, "CloudWatch/ELK", "Observability", "Logs e Dashboards")
+}
+
+System_Ext(mq, "MQSeries", "Event Driven")
+
+System_Ext(cip, "CIP Camara interbancaria de Pagamento", "homologa boleto")
+
+
+
+' Relacionamentos CI/CD
+Rel(codecommit, codepipeline, "Trigger")
+Rel(codepipeline, codebuild, "Build")
+Rel(codebuild, ecr, "Push")
+Rel(codebuild, eks_cluster, "Deploy")
+
+' Relacionamentos Runtime (Async Flow)
+Rel(cliente, cloudfront, "Solicita Boleto", "HTTPS")
+Rel(cloudfront, apigw, "Filtra")
+Rel(apigw, cognito, "Valida Auth")
+Rel(apigw, alb, "Request")
+Rel(alb, boleto_producer, "Encaminha", "HTTP")
+
+' Fluxo de Resiliência
+Rel(boleto_producer, sqs, "Enfileira Pedido", "SQS SDK")
+Rel(sqs, dlq, "Redrive (Falhas)")
+Rel(sqs, boleto_worker, "Consome", "Long Polling")
+
+' Persistência e Notificação
+Rel(boleto_worker, aurora, "Persiste Dados", "Port 5432")
+Rel(boleto_worker, s3, "Armazena PDF", "HTTPS")
+Rel(boleto_worker, ses, "Envia E-mail", "SMTP/HTTPS")
+
+' Config e Observabilidade
+Rel_L(boleto_producer, ssm, "Lê Config")
+Rel_L(boleto_worker, secrets, "Lê DB Pass")
+Rel(eks_cluster, elk, "Logs JSON")
+
+Rel(boleto_worker, mq, "Envia Boleto Registrado")
+Rel(mq, cip, "DDA")
+@enduml
