@@ -1,0 +1,95 @@
+@startuml
+!theme plain
+
+skinparam monochrome true
+
+
+
+|Cliente Externo|
+
+start
+
+:Solicitar Emissão de Boleto;
+
+
+
+|WebSphere (Camada Java)|
+
+:Receber Requisição;
+
+:Validar Dados Cadastrais;
+
+:Preparar Dados para Mainframe (JNI);
+
+
+
+|CICS (Camada de Serviço)|
+
+:Iniciar Transação de Cobrança;
+
+
+
+|COBOL (Lógica de Negócio)|
+
+:Calcular Encargos e Vencimento;
+
+:Gerar Linha Digitável;
+
+:Persistir Registro no DB2;
+
+if (boleto e Registrado?) then (Sim)
+
+  :Enviar registro
+
+   |CIP (Camara Interbancaria de Pagamento)|
+
+   :Homologar Boleto Registrado;
+
+   stop
+
+else (Não)
+
+  :Persistir Registro no DB2;
+
+endif
+
+
+
+
+
+|DB2 (Banco de Dados)|
+
+if (Gravação com Sucesso?) then (Sim)
+
+   :Confirmar Registro;
+
+  |COBOL (Lógica de Negócio)|
+
+  :Formatar Retorno (COMMAREA);
+
+else (Não)
+
+   :Retornar Erro de Persistência;
+
+   stop
+
+endif
+
+
+
+
+
+|WebSphere (Camada Java)|
+
+:Converter COMMAREA para Objeto;
+
+:Gerar Visualização (PDF/HTML);
+
+
+
+|Cliente Externo|
+
+:Receber Boleto para Pagamento;
+
+stop
+@enduml
