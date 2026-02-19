@@ -1,0 +1,69 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+' Configurações de layout
+LAYOUT_WITH_LEGEND()
+title Diagrama de Contêineres (C2) - Sistema de Emissão de Boletos (Full Cloud)
+
+Person(cliente, "Cliente Externo", "Usuário do E-commerce/App")
+
+System_Boundary(aws_region, "AWS Region (us-east-1)") {
+    
+    System_Boundary(devops, "AWS Developer Tools") {
+        Container(codecommit, "CodeCommit", "Git", "Repositório de código fonte (Java/DDD)")
+        Container(codepipeline, "CodePipeline", "Orchestrator", "Orquestração de CI/CD")
+        Container(codebuild, "CodeBuild", "Build Tool", "Build, Testes e Scan de Segurança")
+        Container(ecr, "Amazon ECR", "Registry", "Armazenamento de imagens Docker")
+    }
+
+    System_Boundary(edge_security, "Borda e Segurança") {
+        Container(cloudfront, "CloudFront & WAF", "CDN/WAF", "Proteção contra DDoS e Injeção SQL")
+        Container(apigw, "API Gateway", "API Management", "Exposição de endpoints e throttling")
+        Container(cognito, "Amazon Cognito", "IdP", "Gestão de identidade e tokens JWT")
+    }
+
+    System_Boundary(management, "Management & Governance") {
+        Container(ssm, "SSM Parameter Store", "Config", "Parâmetros, URLs e Feature Flags")
+        Container(secrets, "Secrets Manager", "Security", "Credenciais de Banco com rotação automática")
+    }
+
+    System_Boundary(vpc, "VPC (Multi-AZ)") {
+        
+        System_Boundary(app_subnet, "Private App Subnets") {
+            Container(alb, "Internal ALB", "Load Balancer", "Distribuição de carga para o cluster EKS")
+            
+            System_Boundary(eks_cluster, "Amazon EKS Cluster") {
+                Container(boleto_pod, "Boleto Service Pod", "Java, Spring Boot", "Lógica de negócio (DDD), Cálculos e Persistência")
+            }
+        }
+
+        System_Boundary(data_subnet, "Private Data Subnets") {
+            ContainerDb(aurora, "Amazon Aurora", "PostgreSQL", "Persistência de dados transacionais")
+        }
+    }
+
+    Container(s3, "Amazon S3", "Object Storage", "Armazenamento de boletos gerados (PDF)")
+    Container(elk, "CloudWatch/ELK", "Observability", "Logs centralizados e métricas")
+}
+
+' Relacionamentos CI/CD
+Rel(codecommit, codepipeline, "Gatilho de Pipeline")
+Rel(codepipeline, codebuild, "Inicia Job")
+Rel(codebuild, ecr, "Push Image")
+Rel(codebuild, eks_cluster, "Helm Deploy")
+
+' Relacionamentos Runtime
+Rel(cliente, cloudfront, "Solicita Boleto", "HTTPS/TLS")
+Rel(cloudfront, apigw, "Filtra e encaminha")
+Rel(apigw, cognito, "Valida JWT")
+Rel(apigw, alb, "Request", "VPC Link")
+Rel(alb, boleto_pod, "Encaminha", "HTTP")
+
+' Relacionamentos de Dados e Config
+Rel_L(boleto_pod, ssm, "Lê parâmetros")
+Rel_L(boleto_pod, secrets, "Lê credenciais")
+Rel(boleto_pod, aurora, "SQL", "Port 5432 (SG Restricted)")
+Rel(boleto_pod, s3, "Armazena PDF", "HTTPS")
+Rel(boleto_pod, elk, "Envia Logs", "JSON/FluentBit")
+
+@enduml

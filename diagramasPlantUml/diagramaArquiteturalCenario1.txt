@@ -1,0 +1,99 @@
+@startuml
+!theme spacelab
+skinparam backgroundColor white
+skinparam componentStyle uml2
+
+title Cenário 1: Arquitetura Híbrida AWS + Mainframe (Resiliência & DDD)
+
+' Camada de Borda
+package "AWS Edge Location" #f8f9fa {
+    [CloudFront (CDN)] as CDN
+    [AWS WAF] as WAF
+    CDN -right-> WAF : Filtra Tráfego
+}
+
+' Rede AWS e Região
+package "AWS Cloud (Region: Multi-AZ)" #FFFFFF {
+    
+    [Amazon API Gateway] as APIGW
+    
+    package "VPC (Privada)" #F1F1F1 {
+        
+        ' Camada de Microserviços no EKS
+        package "Amazon EKS (Kubernetes)" #D1E9FF {
+            
+            rectangle "Pod: Auth-Service" <<Microservice>> as AuthPod #Azure {
+                 [Auth Logic]
+            }
+            
+            rectangle "Pod: Boleto-Service (DDD/Clean Arch)" <<Microservice>> as BoletoPod #Azure {
+                [Controller] -down-> [Service]
+                [Service] -down-> [Domain/Entity]
+                [Domain/Entity] -down-> [Adapters/DTO]
+            }
+            
+            rectangle "Pod: Integration-Worker (BFF)" <<Microservice>> as Worker #Azure {
+                [SQS Consumer]
+                [MQ Producer]
+            }
+        }
+        
+        ' Mensageria e Resiliência
+        queue "Amazon SQS (Buffer)" as SQS #orange
+        queue "SQS DLQ (Erros)" as DLQ #red
+        
+        ' Observabilidade
+        database "CloudWatch / ELK Stack" as ELK #LightGreen {
+            [Logs / Kibana] as Kibana
+        }
+    }
+}
+
+' Conectividade e On-Premise
+cloud "Direct Connect / VPN" as DX #grey
+
+package "Data Center (On-Premise)" #E8E8E8 {
+    package "Mainframe (z/OS)" #white {
+        queue "IBM MQ" as MQ #blue
+        [CICS Proxy COBOL] as COBOL
+        database "IBM DB2" as DB2
+    }
+}
+
+' Fluxo das Requisições
+[Cliente Externo] -down-> CDN : HTTPS/JSON
+WAF -down-> APIGW
+
+' Integração API Gateway
+APIGW -down-> AuthPod : 1. Rota /auth (Lambda Auth)
+APIGW -down-> BoletoPod : 2. Rota /boleto (VPC Link)
+
+' Fluxo Interno Microserviço
+BoletoPod -right-> SQS : 3. Put Message (JSON)
+SQS -down-> DLQ : (Se falha crítica)
+SQS -down-> Worker : 4. Long Polling
+
+' Fluxo Híbrido
+Worker -down-> DX : 5. Envio Seguro
+DX -down-> MQ : 6. Entrega Mensagem
+MQ -down-> COBOL : 7. Trigger
+COBOL -down-> DB2 : 8. SQL Insert
+
+' Observabilidade (Transversal)
+BoletoPod .down.> Kibana : Logs Estruturados
+Worker .down.> Kibana : Logs de Resiliência
+
+note top of BoletoPod
+  **Clean Architecture:**
+  - Camadas Isoladas
+  - Refatorado de COBOL via
+    **Claude 3.5 (Bedrock)**
+end note
+
+note right of SQS
+  **Resiliência:**
+  Se o DX cair, as mensagens 
+  acumulam aqui sem perda.
+end note
+
+@enduml

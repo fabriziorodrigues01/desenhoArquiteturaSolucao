@@ -1,0 +1,93 @@
+@startuml
+!theme plain
+skinparam componentStyle uml2
+
+title Cenário 2: Full Cloud (DevOps + Configuração Centralizada)
+
+package "External" {
+    [Cliente App/Web] as Cliente
+}
+
+package "AWS Cloud (Region: us-east-1)" #white {
+
+    [CloudFront & WAF] as Edge
+    
+    package "AWS Developer Tools" #D5E8D4 {
+        [CodeCommit] as Source
+        [CodePipeline] as Pipeline
+        [CodeBuild] as Build
+        [ECR] as ECR
+    }
+    
+    package "Management & Governance" #E1D5E7 {
+        [SSM Parameter Store] as SSM
+        [AWS Secrets Manager] as Secrets
+        [KMS (Encryption)] as KMS
+    }
+
+    package "VPC (Multi-AZ)" #f8f9fa {
+        package "Private App Subnets" #f4faff {
+            [Internal ALB] as ALB
+            package "Amazon EKS Cluster" #white {
+                [Boleto Pod (DDD)] as P2
+            }
+        }
+        package "Private Data Subnets" #fff9f4 {
+            database "Amazon Aurora" as DB
+        }
+    }
+    
+    [API Gateway] as APIGW
+    [S3] as S3
+    [OpenSearch/Kibana] as ELK
+}
+
+Cliente --> Edge : HTTPS (SSL)
+Edge --> APIGW : Request Filtrada
+
+' Relacionamentos CI/CD
+Source -> Pipeline
+Pipeline -> Build
+Build -> ECR
+Build -> P2 : Deploy (Helm)
+
+' Injeção de Configuração e Segredos
+SSM .right.> P2 : Injeta URLs/Strings (Config)
+Secrets .right.> P2 : Injeta Credenciais (DB)
+KMS -up-> SSM : Criptografa dados sensíveis
+
+' Runtime
+APIGW -> ALB
+ALB -> P2
+
+' Segurança e Dados
+P2 -down-> DB : SQL (Port 5432)
+P2 -right-> S3 : PDF
+P2 .down.> ELK : Logs
+
+note left of SSM
+  **SSM Parameter Store:**
+  - URLs de Endpoints
+  - Feature Flags
+  - Timeouts
+  - Log Levels
+end note
+
+note left of Secrets
+  **Secrets Manager:**
+  - Senha do Aurora
+  - API Keys externas
+  - Rotação Automática
+end note
+
+note bottom of P2
+  **SG-EKS-Nodes:**
+  - Garante entrada apenas do ALB
+end note
+
+note bottom of DB
+  **SG-Database:**
+  - Ingress: SG-EKS-Nodes
+  - Port: 5432
+end note
+@enduml

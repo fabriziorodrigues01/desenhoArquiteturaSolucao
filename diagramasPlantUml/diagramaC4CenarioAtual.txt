@@ -1,0 +1,51 @@
+@startuml
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+
+
+Person(cliente, "Cliente Externo", "App/Web")
+
+System_Ext(was, "WebSphere (WAS)", "Java Enterprise", "Recebe requisições, valida dados e gerencia a ponte JNI.")
+
+System_Ext(cip, "CIP Camara interbancaria de Pagamento", "homologa boleto")
+
+
+
+System_Boundary(c1, "Sistema de Emissão de Boletos") {
+
+Container(ctg, "CICS Transaction Gateway", "Gateway de Conectividade", "Gerencia o pool de conexões e sessões com o Mainframe.")
+
+ 
+
+  System_Boundary(mainframe, "Mainframe (z/OS)") {
+
+      Container(cics, "CICS TS", "Transaction Monitor", "Orquestra a execução da transação de negócio.")
+
+      Container(cobol, "Programa COBOL", "Business Logic", "Calcula campos do boleto e aplica regras bancárias.")
+
+       ContainerDb(db2, "DB2", "Banco de Dados Relacional", "Persiste os dados do boleto emitido.")
+
+   }
+
+   Container(mq, "MQSeries", "Event Driven")
+
+}
+
+
+
+Rel(cliente, was, "Envia requisição", "HTTPS/JSON")
+
+Rel(was, ctg, "Executa chamada nativa", "JNI")
+
+Rel(ctg, cics, "Inicia Transação", "IPIC/EXCI")
+
+Rel(cics, cobol, "Chama programa", "COMMAREA")
+
+Rel(cobol,mq, "envia boleto registrado")
+
+Rel(mq, cip, "Chama via SOAP")
+
+Rel(cobol, db2, "Persiste dados", "SQL")
+
+@enduml
