@@ -259,9 +259,9 @@ Uso do pilar de Confiabilidade (AWS Well-Architected), pois o uso de SQS/DLQ imp
 
 Segue o diagrama C4 e o diagrama de arquitetura completo abaixo:
 
-![Diagrama Infra](./imagens/diagrama%20de%20infra%20cenario%202%20-%20migracao%20full.png)
+![Diagrama Infra](./imagens/diagrama%20de%20infra%20cenario%202%20-%20migracao%20full.png?)
 
-![Diagrama C4](./imagens/diagrama%20C4%20-%20nivel%20c2%20-%20Proposta.png)
+![Diagrama C4](./imagens/diagrama%20C4%20-%20nivel%20c2%20-%20Proposta.png?)
 
 2. # **Anexos** {#anexos}
 
