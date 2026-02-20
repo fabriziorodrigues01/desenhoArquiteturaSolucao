@@ -236,6 +236,11 @@ Os componentes para compor esta arquitetura são complementares ao cenário 1, i
 * **VPC Endpoints**: Para que o EKS fale com o ECR ou S3 sem precisar sair pela internet (via NAT Gateway). O tráfego nunca sai da rede global da AWS.
 
 * **AWS Cloudformation:** serviço nativo para Infraestrutura como Código (IaC)
+* 
+* **AWS Direct Connect ou VPN Site to Site:** Túnel dedicado e seguro que interliga a VPC da AWS ao Data Center onde O IBM MQ da plataforma distribuida está hospedado.
+
+* **IBM MQ (Queue Manager) for Linux/x86:** Recebe a mensagem vinda da nuvem e se integra à Camara Interbancaria de Pagamentos (CIP)**.**
+
 * **AWS SES:** O SES envia o e-mail com o link do boleto (gerado via S3 Pre-signed URL) para o cliente
 
 ***Padrões recomendados (clean architecture \+ DDD):***
