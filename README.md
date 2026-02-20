@@ -23,6 +23,7 @@
 | Revisão | Data | Criado | Descrição resumida das mudanças |
 | :---: | :---: | :---: | ----- |
 | 0.1 | 19/02/2026 | Fabrizio Rodrigues | Initial Version |
+| 0.2 | 20/02/2026 | Fabrizio Rodrigues | Scenario 2 Update - Saida externa CIP e Resiliencia |
 
 **Conteúdo**
 
