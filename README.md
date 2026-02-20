@@ -236,17 +236,28 @@ Os componentes para compor esta arquitetura são complementares ao cenário 1, i
 * **VPC Endpoints**: Para que o EKS fale com o ECR ou S3 sem precisar sair pela internet (via NAT Gateway). O tráfego nunca sai da rede global da AWS.
 
 * **AWS Cloudformation:** serviço nativo para Infraestrutura como Código (IaC)
+* **AWS SES:** O SES envia o e-mail com o link do boleto (gerado via S3 Pre-signed URL) para o cliente
 
 ***Padrões recomendados (clean architecture \+ DDD):***
 
 A aplicação Java (Spring Boot) pode usar o SDK para buscar os parâmetros no startup. Ou, de forma mais nativa ao Kubernetes, usar o **Secrets Store CSI Driver**, que monta os parâmetros do SSM como arquivos dentro do volume do Pod ou como variáveis de ambiente nativas
 
+***Estratégia de Resiliência***
+
+Neste cenário não existe a dependência do link físico (Direct Connect) para o isolamento de falhas nos microsserviços distribuídos. Para garantir que o cliente não fique "travado" com o tempo de resposta alto de forma sincrona, sugiro a utilização de padrões de Mensageria Assíncrona e Fallback e o envio de um "Protocolo de Processamento". Isso libera o e-commerce para continuar a jornada do cliente.
+
+O Worker denominado Producer (Boleto Pod) recebe a requisição, valida os dados e em vez de tentar gravar no Aurora ele posta a mensagem na fila do Amazon SQS.
+
+Outra mudança, ocorre no Worker de Processamento denominado Consumer, ou seja, consome a fila SQS, gera o boleto e grava no Aurora.
+
+Se o Amazon Aurora sofrer um failover, a mensagem volta para a fila (Retentativa). Se falhar mais 1 vez, vai para a DLQ. O processo apenas fica retido para correção através da area de sustentação.
+
 ***Vantagem estratégica:***
 
-Este cenário apresenta a completa jornada de modernização. A estratégia de IaC é para garantir que por exemplo o banco de dados e o cluster de containers suba em minutos.  
-O sistema por se tratar principalmente do setor Bancário, proteger a camada de rede se faz necessário.
+Este cenário apresenta a completa jornada de modernização. A estratégia de IaC é para garantir que por exemplo o banco de dados e o cluster de containers suba em minutos. 
+Uso do pilar de Confiabilidade (AWS Well-Architected), pois o uso de SQS/DLQ impede a perda de dados em picos de carga ou falhas de banco.
 
-Segue o diagrama C4 e o diagrama de arquitetura completo abaixo : 
+Segue o diagrama C4 e o diagrama de arquitetura completo abaixo:
 
 ![Diagrama Infra](./imagens/diagrama%20de%20infra%20cenario%202%20-%20migracao%20full.png)
 
