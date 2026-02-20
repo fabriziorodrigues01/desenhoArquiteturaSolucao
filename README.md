@@ -14,7 +14,7 @@
 
 ## 
 
-## *Version: 0.1*
+## *Version: 0.2*
 
 **Histórico do Documento**
 
@@ -254,9 +254,9 @@ Neste cenário não existe a dependência do link físico (Direct Connect) para 
 
 O Worker denominado Producer (Boleto Pod) recebe a requisição, valida os dados e em vez de tentar gravar no Aurora ele posta a mensagem na fila do Amazon SQS.
 
-Outra mudança, ocorre no Worker de Processamento denominado Consumer, ou seja, consome a fila SQS, gera o boleto e grava no Aurora.
+Outra mudança, ocorre no Worker de Processamento denominado Consumer, ou seja, consome a fila SQS, gera o boleto, grava no Aurora e se integra com a CIP atraves do IBM MQ Client integrando-se ao MQ Server na plataforma Open.
 
-Se o Amazon Aurora sofrer um failover, a mensagem volta para a fila (Retentativa). Se falhar mais 1 vez, vai para a DLQ. O processo apenas fica retido para correção através da area de sustentação.
+Se o Amazon Aurora sofrer um failover ou o MQ uma quebra na conexção por falha do Direct Connect, a mensagem volta para a fila (Retentativa). Se falhar mais 1 vez, vai para a DLQ. O processo apenas fica retido para correção através da area de sustentação.
 
 ***Vantagem estratégica:***
 
