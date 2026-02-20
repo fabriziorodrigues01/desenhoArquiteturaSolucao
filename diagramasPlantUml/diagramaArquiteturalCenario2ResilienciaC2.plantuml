@@ -8,6 +8,17 @@ package "External" {
     [Cliente App/Web] as Cliente #pink
 }
 
+' Conectividade e On-Premise
+cloud "Direct Connect / VPN" as DX #grey
+
+package "Distribuídos (Missão Crítica)" #E8E8E8 {
+    package "Linux/x86 (Power)" #white {
+        queue "IBM MQ" as MQ #blue
+    }
+}
+
+[CIP] as cip
+
 package "AWS Cloud (Region: us-east-1)" #white {
 
     [CloudFront & WAF] as Edge
@@ -80,6 +91,11 @@ Worker -down-> DB : 5. SQL (Port 5432)
 Worker -up-> S3 : 6. Upload PDF
 Worker -up-> SES : 7. Dispara E-mail ao Cliente
 Worker .down.> ELK : Logs JSON
+
+' Comunicacao com Plataforma Distribuida de Missao Critica para comunicacao com a CIP - O MQ de Saida é por default plataforma Open
+P2 -> DX
+DX -> MQ
+MQ -> cip
 
 ' Notas Técnicas
 note bottom of SQS
