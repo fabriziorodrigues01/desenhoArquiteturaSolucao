@@ -56,9 +56,9 @@ Atualmente o cliente pode consultar e ajustar seu limite do cartão de crédito 
 
 ## Oportunidades e Soluções - TO-BE
 
-### Arquitetura Lógica
+## **Arquitetura Lógica**
 
-Realizado o (Gap Analise) dos sistemas externos:
+### Realizado o (Gap Analise) dos sistemas externos:
 
 Identificado a ausência destes elementos no escopo original e que são vitais para a conclusividade da experiência do Cliente:
 
@@ -120,7 +120,7 @@ _Resultado:_ O worker **Autoriza Saldo** já passa a considerar este valor para 
 
 ![Diagrama Dados](./imagens/fluxo%20de%20dados%202.png)
 
-**_Justificativa Técnica_**
+### **_Justificativa Técnica_**
 
 A solução proposta baseia-se no desacoplamento total entre a Experiência do Cliente (Real-Time) e o Registro Financeiro (Legacy Sync).
 
@@ -150,7 +150,7 @@ Custo Operacional vs. Escalabilidade (Serverless/Managed)
 
 \- Justificativa: O benefício do Time-to-Market e a capacidade de escalar de 1M para 10M de requisições sem intervenção manual (Ops) justificam o investimento, especialmente para eventos críticos como a Black Friday, onde o custo da queda do sistema supera o custo da infraestrutura.
 
-### Arquitetura de infraestrutura
+## **Arquitetura de infraestrutura**
 
 **_Pilha de Serviços_**
 
