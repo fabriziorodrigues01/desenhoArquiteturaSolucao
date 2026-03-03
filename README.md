@@ -1,8 +1,6 @@
-Arquitetura de Solução
+# Arquitetura de Solução
 
-**Gestão de limites e autorização em**
-
-**canais digitais**
+## **Gestão de limites e autorização em canais digitais**
 
 Março 2026
 
@@ -72,7 +70,7 @@ Identificado a ausência destes elementos no escopo original e que são vitais p
 
 • Bacen/Orgão Regulatório: Logs de auditoria para conformidade com o Banco Central em relação a fiscalização das operações de cartão de crédito.
 
-![]imagem1
+![Diagrama BPMN](./imagens/fluxo%20de%20negocio.png)
 
 O Cliente ao efetuar o ajuste de seu limite através dos canais digitais, o serviço responsável pelas regras de negócio (caixa Gestão de Limite) efetua as validações e atualiza o **Redis** e o **DynamoDB** antes de responder ao cliente, garantindo que a próxima transação (mesmo que ocorra 1ms depois) já leia o limite novo do Redis e acima de tudo realize a **Idempotência,** efetuando a verificação da chave, tratando o risco de duplicidades de ajustes de limite para mesma transação.
 
@@ -120,7 +118,7 @@ _Resultado:_ O worker **Autoriza Saldo** já passa a considerar este valor para 
 
 **19 e 20 Cenário de Erro Fatal (DLQ):** Se após X tentativas o erro persistir, a mensagem é movida para a **Dead Letter Queue (DLQ)**. Um alerta é gerado para o time de operações, mas o cliente **não teve sua experiência interrompida** no canal digital.
 
-![]imagem2
+![Diagrama Dados](./imagens/fluxo%20de%20dados%202.png)
 
 **_Justificativa Técnica_**
 
@@ -197,7 +195,7 @@ Fazer o Security Scan da imagem.
 - **IAM Roles for Service Accounts**: O Pod no EKS não usará chaves fixas (Access Keys) para acessar o DB. Ele usará uma Role temporária do IAM, seguindo o princípio do menor privilégio.
 - **AWS Cloudformation:** serviço nativo para Infraestrutura como Código (IaC)
 
-**_![]imagem3_**
+![Arquitetura Cloud](./imagens/diagrama%20arquitetura%20-%20draft.png)
 
 **_Estratégias para Consistência e Atualização em Tempo Real_**
 
@@ -243,7 +241,7 @@ Elasticidade de Dados: O DynamoDB escala automaticamente sem necessidade de pré
 
 Buffer de Mensageria: O SQS absorve o pico de 1.150 TPS (transações por segundo), servindo como um "amortecedor" que entrega as mensagens ao legado em uma vazão que o sistema consiga processar, evitando uma sobrecarga.
 
-![]image4
+![Arquitetura C4](./imagens/C4%20arquitetura%20infra.png)
 
 # Anexos
 
