@@ -39,7 +39,7 @@ package "AWS Region (sa-east-1)" {
 
 package "Legacy Connectivity" {
     [Direct Connect / VPN] as dx #Ivory
-    database "Mainframe (Legacy)" as mainframe #Grey
+    database "(Legacy)" as mainframe #Grey
 }
 
 ' Fluxo CI/CD
