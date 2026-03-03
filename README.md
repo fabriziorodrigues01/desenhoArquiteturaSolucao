@@ -82,41 +82,41 @@ O **Sistema de Bandeira** precisa ser notificada do novo limite para que, se o c
 
 O uso da mensageria (caixa SQS) tem um papel importante para o isolamento de falha, pois se o "Sistema Legado" falhar e o cliente já ter recebido a notificação de OK, o processo não será interrompido. A idéia é que o cliente receba a resposta muito antes do Legado ou da Bandeira serem atualizados garantidos por um back-end resiliente.
 
-**_Fluxo de dados (Transação completa e Padrão de resiliência)_**
+### **_Fluxo de dados (Transação completa e Padrão de resiliência)_**
 
 O fluxo abaixo mantém a experiência fluida em canais digitais, mesmo com um legado síncrono e com latência de 800ms.
 
-**1 Request Omnichannel:** O cliente solicita o ajuste via App/Web. A requisição carrega uma chave Idempotente única gerada pelo dispositivo.
+- **1 Request Omnichannel:** O cliente solicita o ajuste via App/Web. A requisição carrega uma chave Idempotente única gerada pelo dispositivo.
 
-**2 Camada Edge Security:** O tráfego passa pelo **Amazon CloudFront** e **AWS WAF** filtrando a requisição, sendo autenticado no **API Gateway**.
+- **2 Camada Edge Security:** O tráfego passa pelo **Amazon CloudFront** e **AWS WAF** filtrando a requisição, sendo autenticado no **API Gateway**.
 
-**3 Check de Idempotência (Redis):** O Gestor de limite (**EKS**) consulta o **Amazon ElastiCache (Redis)**. Se a chave já existir, o sistema retorna o status da transação anterior em menos tempo, evitando processamento duplicado quando houver picos de acessos por exemplo na black Friday.
+- **3 Check de Idempotência (Redis):** O Gestor de limite (**EKS**) consulta o **Amazon ElastiCache (Redis)**. Se a chave já existir, o sistema retorna o status da transação anterior em menos tempo, evitando processamento duplicado quando houver picos de acessos por exemplo na black Friday.
 
-**4 Motor de Risco (SaaS):** O serviço realiza uma chamada síncrona ao **Motor de Risco (SaaS Externo)**. Se negado, o fluxo encerra aqui com um erro de negócio.
+- **4 Motor de Risco (SaaS):** O serviço realiza uma chamada síncrona ao **Motor de Risco (SaaS Externo)**. Se negado, o fluxo encerra aqui com um erro de negócio.
 
-**6 Persistência (DynamoDB):** O limite é gravado no **Amazon DynamoDB** com o status PENDING_SYNC (para aguardar os bloqueios serem liberados se outra transação modificar o mesmo item). O banco escala instantaneamente para suportar a carga da Black Friday em um trafego imprevisível no modo (**On-Demand**).
+- **6 Persistência (DynamoDB):** O limite é gravado no **Amazon DynamoDB** com o status PENDING_SYNC (para aguardar os bloqueios serem liberados se outra transação modificar o mesmo item). O banco escala instantaneamente para suportar a carga da Black Friday em um trafego imprevisível no modo (**On-Demand**).
 
-**7 Atualização do Estado Projetado (Redis):** Simultaneamente, o **Redis** é atualizado com o novo valor de limite.
+- **7 Atualização do Estado Projetado (Redis):** Simultaneamente, o **Redis** é atualizado com o novo valor de limite.
 
-_Resultado:_ O worker **Autoriza Saldo** já passa a considerar este valor para novas compras imediatamente.
+ - _Resultado:_ O worker **Autoriza Saldo** já passa a considerar este valor para novas compras imediatamente.
 
-**8 Confirmação Otimista (Push 1):** O sistema dispara uma notificação via **Amazon SNS/Push** informando que o pedido foi recebido e o limite já está disponível para uso.
+- **8 Confirmação Otimista (Push 1):** O sistema dispara uma notificação via **Amazon SNS/Push** informando que o pedido foi recebido e o limite já está disponível para uso.
 
-**10 Resposta ao Cliente:** O App recebe o "OK" em **< XXms**, cumprindo o requisito de responsividade.
+- **10 Resposta ao Cliente:** O App recebe o "OK" em **< XXms**, cumprindo o requisito de responsividade.
 
-**11**O **DynamoDB Streams** captura a alteração e aciona uma **Lambda (Integration Worker)** de forma assíncrona.
+- **11**O **DynamoDB Streams** captura a alteração e aciona uma **Lambda (Integration Worker)** de forma assíncrona.
 
-**12 Buffer de Resiliência (SQS FIFO):** A Lambda posta o evento em uma fila **Amazon SQS FIFO**. Isso garante a ordem cronológica (essencial para ajustes de limite) e atua como um amortecedor contra a latência de 800ms do legado.
+- **12 Buffer de Resiliência (SQS FIFO):** A Lambda posta o evento em uma fila **Amazon SQS FIFO**. Isso garante a ordem cronológica (essencial para ajustes de limite) e atua como um amortecedor contra a latência de 800ms do legado.
 
-**13 Integração com Legado (ACL):** O worker de integração tenta atualizar o **Legado** via **Direct Connect**.
+- **13 Integração com Legado (ACL):** O worker de integração tenta atualizar o **Legado** via **Direct Connect**.
 
-**15 Cenário de Sucesso:** O Legado confirma em 800ms. O Worker atualiza o DynamoDB para status COMPLETED
+- **15 Cenário de Sucesso:** O Legado confirma em 800ms. O Worker atualiza o DynamoDB para status COMPLETED
 
-**16** Uma trigger aciona **Lambda** que dispara o **Push 2** ("Limite confirmado no sistema central").
+- **16** Uma trigger aciona **Lambda** que dispara o **Push 2** ("Limite confirmado no sistema central").
 
-**17 e 18 Cenário de Falha Temporária (Resiliência):** Se o Legado estiver offline (fora do horário comercial), a mensagem permanece no SQS. O sistema tentará novamente de forma automática sem intervenção humana.
+- **17 e 18 Cenário de Falha Temporária (Resiliência):** Se o Legado estiver offline (fora do horário comercial), a mensagem permanece no SQS. O sistema tentará novamente de forma automática sem intervenção humana.
 
-**19 e 20 Cenário de Erro Fatal (DLQ):** Se após X tentativas o erro persistir, a mensagem é movida para a **Dead Letter Queue (DLQ)**. Um alerta é gerado para o time de operações, mas o cliente **não teve sua experiência interrompida** no canal digital.
+- **19 e 20 Cenário de Erro Fatal (DLQ):** Se após X tentativas o erro persistir, a mensagem é movida para a **Dead Letter Queue (DLQ)**. Um alerta é gerado para o time de operações, mas o cliente **não teve sua experiência interrompida** no canal digital.
 
 ![Diagrama Dados](./imagens/fluxo%20de%20dados%202.png)
 
