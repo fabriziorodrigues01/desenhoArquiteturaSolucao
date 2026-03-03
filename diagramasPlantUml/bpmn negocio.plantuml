@@ -1,0 +1,67 @@
+@startuml
+!pragma target gitlab
+title BPMN - Fluxo de Ajuste de Limite e Sincronização (Omnichannel)
+
+
+|#GhostWhite|Cliente|
+start
+:Solicita Ajuste de Limite\n(App/Web/Call Center);
+
+
+|#AliceBlue|Plataforma AWS (Limit Service)|
+:Recebe Request + Idempotency Key;
+if (Chave já processada?) then (Sim)
+  :Retorna Status Anterior;
+  stop
+else (Não)
+  :Inicia Workflow de Ajuste;
+endif
+
+
+|#Lavender|Motor de Risco (SaaS Externo)|
+:Valida Score e Política de Crédito;
+if (Aprovado?) then (Não)
+
+  |#AliceBlue|Plataforma AWS (Limit Service)|
+  :Registra Negativa no DynamoDB;
+  :Notifica Cliente (Reprovado);
+  stop
+else (Sim)
+endif
+
+
+|#AliceBlue|Plataforma AWS (Limit Service)|
+fork
+  :Atualiza **DynamoDB**\n(Fonte da Verdade);
+fork again
+  :Atualiza **Redis**\n(Saldo Projetado & Status);
+end fork
+
+
+|#Cornsilk|Sistema de Notificações (SNS/Push)|
+:Envia Confirmação "Limite Disponível";
+
+
+|#AliceBlue|Plataforma AWS (Limit Service)|
+:Responde ao Cliente (< 50ms);
+
+
+|#LightGreen|Messaging (SQS/Worker)|
+:Captura alteração via DynamoDB Streams;
+:Envia para Fila de Sincronismo;
+
+
+|#Ivory|Sistema Legado (Mainframe)|
+:Processa Ajuste (800ms latência);
+:Confirma Sincronismo D+0;
+
+
+|#LavenderBlush|Bandeira (Visa/Mastercard)|
+:Recebe atualização de saldo STIP\n(Para autorizações offline/externas);
+
+
+|#GhostWhite|Cliente|
+:Realiza nova compra com limite atualizado;
+stop
+
+@enduml
