@@ -98,7 +98,7 @@ O fluxo abaixo mantém a experiência fluida em canais digitais, mesmo com um le
 
 - **7 Atualização do Estado Projetado (Redis):** Simultaneamente, o **Redis** é atualizado com o novo valor de limite.
 
- - _Resultado:_ O worker **Autoriza Saldo** já passa a considerar este valor para novas compras imediatamente.
+     * _Resultado:_ O worker **Autoriza Saldo** já passa a considerar este valor para novas compras imediatamente.
 
 - **8 Confirmação Otimista (Push 1):** O sistema dispara uma notificação via **Amazon SNS/Push** informando que o pedido foi recebido e o limite já está disponível para uso.
 
@@ -124,31 +124,31 @@ O fluxo abaixo mantém a experiência fluida em canais digitais, mesmo com um le
 
 A solução proposta baseia-se no desacoplamento total entre a Experiência do Cliente (Real-Time) e o Registro Financeiro (Legacy Sync).
 
-Performance e Escalabilidade (Pilar de Eficiência): Utilização do Amazon EKS com HPA (Horizontal Pod Autoscaler) e DynamoDB On-Demand para suportar a elasticidade necessária (de 1M para 10M de requisições). O gargalo do sistema legado (800ms) é isolado por uma camada de mensageria (SQS FIFO), garantindo que a latência percebida pelo usuário seja ditada apenas pela infraestrutura AWS (~30ms a 45ms).
+**Performance e Escalabilidade (Pilar de Eficiência)**: Utilização do Amazon EKS com HPA (Horizontal Pod Autoscaler) e DynamoDB On-Demand para suportar a elasticidade necessária (de 1M para 10M de requisições). O gargalo do sistema legado (800ms) é isolado por uma camada de mensageria (SQS FIFO), garantindo que a latência percebida pelo usuário seja ditada apenas pela infraestrutura AWS (~30ms a 45ms).
 
-Consistência e Confiabilidade: O uso do Redis (ElastiCache) como State Store resolve o problema de idempotência e concorrência em alta escala. Ao atualizar o Redis e o DynamoDB antes de responder ao cliente, é garantido que qualquer transação subsequente (autorização) consulte o saldo mais atualizado, cumprindo o requisito de "tempo real".
+**Consistência e Confiabilidade**: O uso do Redis (ElastiCache) como State Store resolve o problema de idempotência e concorrência em alta escala. Ao atualizar o Redis e o DynamoDB antes de responder ao cliente, é garantido que qualquer transação subsequente (autorização) consulte o saldo mais atualizado, cumprindo o requisito de "tempo real".
 
-Resiliência (Pilar de Confiabilidade): A arquitetura utiliza o padrão Store-and-Forward. Caso o legado esteja offline ou instável, as operações de ajuste de limite não são perdidas; elas permanecem persistidas na fila com lógica de retentativa automática e DLQ, garantindo 99,99% de disponibilidade para os canais digitais.
+**Resiliência (Pilar de Confiabilidade)**: A arquitetura utiliza o padrão Store-and-Forward. Caso o legado esteja offline ou instável, as operações de ajuste de limite não são perdidas; elas permanecem persistidas na fila com lógica de retentativa automática e DLQ, garantindo 99,99% de disponibilidade para os canais digitais.
 
-**Decisão de Design Adotado**
+### **_Decisão de Design Adotado_**
 
 Consistência Eventual (Legado) vs. Consistência Forte (Canais)
 
-\- Decisão: Aceita-se que o sistema legado esteja temporariamente desatualizado em relação à AWS por alguns segundos.
+\* Decisão: Aceita-se que o sistema legado esteja temporariamente desatualizado em relação à AWS por alguns segundos.
 
-\- Justificativa: Priorizar a Disponibilidade e a Performance. Manter uma transação síncrona com o legado de 800ms degradaria a experiência do cliente e aumentaria o risco de timeout nos canais digitais durante picos de tráfego.
+\* Justificativa: Priorizar a Disponibilidade e a Performance. Manter uma transação síncrona com o legado de 800ms degradaria a experiência do cliente e aumentaria o risco de timeout nos canais digitais durante picos de tráfego.
 
 Complexidade de Implementação vs. Resiliência
 
-\- Decisão: O uso de mensageria (SQS), Streams e Cache aumenta a complexidade do ecossistema e exige maior esforço de monitoramento (Distributed Tracing).
+\* Decisão: O uso de mensageria (SQS), Streams e Cache aumenta a complexidade do ecossistema e exige maior esforço de monitoramento (Distributed Tracing).
 
-\- Justificativa: É um custo necessário para garantir que o sistema digital não sofra "efeito cascata" em caso de indisponibilidade do legado. Um sistema simples (direto no legado) seria mais fácil de codificar, mas falharia em escala e sob condições de baixa disponibilidade.
+\* Justificativa: É um custo necessário para garantir que o sistema digital não sofra "efeito cascata" em caso de indisponibilidade do legado. Um sistema simples (direto no legado) seria mais fácil de codificar, mas falharia em escala e sob condições de baixa disponibilidade.
 
 Custo Operacional vs. Escalabilidade (Serverless/Managed)
 
-\- Decisão: O uso de serviços gerenciados como DynamoDB On-Demand e ElastiCache pode ter um custo unitário superior a instâncias fixas.
+\* Decisão: O uso de serviços gerenciados como DynamoDB On-Demand e ElastiCache pode ter um custo unitário superior a instâncias fixas.
 
-\- Justificativa: O benefício do Time-to-Market e a capacidade de escalar de 1M para 10M de requisições sem intervenção manual (Ops) justificam o investimento, especialmente para eventos críticos como a Black Friday, onde o custo da queda do sistema supera o custo da infraestrutura.
+\* Justificativa: O benefício do Time-to-Market e a capacidade de escalar de 1M para 10M de requisições sem intervenção manual (Ops) justificam o investimento, especialmente para eventos críticos como a Black Friday, onde o custo da queda do sistema supera o custo da infraestrutura.
 
 ## **Arquitetura de infraestrutura**
 
