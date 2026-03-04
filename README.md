@@ -134,21 +134,21 @@ A solução proposta baseia-se no desacoplamento total entre a Experiência do C
 
 Consistência Eventual (Legado) vs. Consistência Forte (Canais)
 
-\* Decisão: Aceita-se que o sistema legado esteja temporariamente desatualizado em relação à AWS por alguns segundos.
+    * Decisão: Aceita-se que o sistema legado esteja temporariamente desatualizado em relação à AWS por alguns segundos.
 
-\* Justificativa: Priorizar a Disponibilidade e a Performance. Manter uma transação síncrona com o legado de 800ms degradaria a experiência do cliente e aumentaria o risco de timeout nos canais digitais durante picos de tráfego.
+    * Justificativa: Priorizar a Disponibilidade e a Performance. Manter uma transação síncrona com o legado de 800ms degradaria a experiência do cliente e aumentaria o risco de timeout nos canais digitais durante picos de tráfego.
 
 Complexidade de Implementação vs. Resiliência
 
-\* Decisão: O uso de mensageria (SQS), Streams e Cache aumenta a complexidade do ecossistema e exige maior esforço de monitoramento (Distributed Tracing).
+    * Decisão: O uso de mensageria (SQS), Streams e Cache aumenta a complexidade do ecossistema e exige maior esforço de monitoramento (Distributed Tracing).
 
-\* Justificativa: É um custo necessário para garantir que o sistema digital não sofra "efeito cascata" em caso de indisponibilidade do legado. Um sistema simples (direto no legado) seria mais fácil de codificar, mas falharia em escala e sob condições de baixa disponibilidade.
+    * Justificativa: É um custo necessário para garantir que o sistema digital não sofra "efeito cascata" em caso de indisponibilidade do legado. Um sistema simples (direto no legado) seria mais fácil de codificar, mas falharia em escala e sob condições de baixa disponibilidade.
 
 Custo Operacional vs. Escalabilidade (Serverless/Managed)
 
-\* Decisão: O uso de serviços gerenciados como DynamoDB On-Demand e ElastiCache pode ter um custo unitário superior a instâncias fixas.
+    * Decisão: O uso de serviços gerenciados como DynamoDB On-Demand e ElastiCache pode ter um custo unitário superior a instâncias fixas.
 
-\* Justificativa: O benefício do Time-to-Market e a capacidade de escalar de 1M para 10M de requisições sem intervenção manual (Ops) justificam o investimento, especialmente para eventos críticos como a Black Friday, onde o custo da queda do sistema supera o custo da infraestrutura.
+    * Justificativa: O benefício do Time-to-Market e a capacidade de escalar de 1M para 10M de requisições sem intervenção manual (Ops) justificam o investimento, especialmente para eventos críticos como a Black Friday, onde o custo da queda do sistema supera o custo da infraestrutura.
 
 ## **Arquitetura de infraestrutura**
 
@@ -162,33 +162,27 @@ Os componentes para compor esta arquitetura são definidos em Camada de Entrada 
 - **AWS Lambda:** Terá o papel de workers de integração leves e orientados a eventos.
 - **AWS EKS microserviço:** Atua como orquestrador central para os microserviços de negócio, garantindo alta disponibilidade e portabilidade.
 - **AWS EKS microserviço Pod A e Pod B:**
-
-• Gestor de Limites
-
-**•** Autorizador de Saldo.
+    • Gestor de Limites
+    •  Autorizador de Saldo.
 
 - **AWS Direct Connect ou VPN Site to Site:** Túnel dedicado e seguro que interliga a VPC da AWS ao Data Center onde o Legado está hospedado.
 - **Amazon DynamoDB:** A camada de dados será composta por bancos de dados gerenciados (NoSQL e In-memory) para suportar a baixa latência exigida. Sugestao de uso com o modelo Global Tables para DR e Point-in-Time Recovery para segurança de dados onde os backups podem ser replicados automaticamente entre Regiões para maior resiliência e com recuperação pontual.
 
-**Observação para o caso em que a região principal falhe:**
+    **Observação para o caso em que a região principal falhe:**
 
-**RPO (Recovery Point Objective):** Próximo de zero. Como a escrita no DynamoDB acontece antes de qualquer tentativa de sincronização, o dado nunca é perdido, mesmo que o Legado falhe.
+    **RPO (Recovery Point Objective):** Próximo de zero. Como a escrita no DynamoDB acontece antes de qualquer tentativa de sincronização, o dado nunca é perdido, mesmo que o Legado falhe.
 
-**RTO (Recovery Time Objective):** Segundos. Com Global Tables, a infraestrutura chaveia para outra região AWS se houver um desastre regional.
+    **RTO (Recovery Time Objective):** Segundos. Com Global Tables, a infraestrutura chaveia para outra região AWS se houver um desastre regional.
 
 - Cache & Idempotência: **Amazon ElastiCache for Redis** (Latência < 1ms para travas de idempotência e saldo projetado).  
 
 - Amazon SQS FIFO (Garantia de ordem e buffer de resiliência): será para isolar falhas no **Direct Connect.**
 - **AWS CodeCommit:** Repositório privado Git onde o código refatorado (COBOL -> Java) é armazenado
 - **AWS CodeBuild:** Acionado pelo Pipeline para:
-
-Compilar a Aplicação.
-
-Executar testes unitários e de integração.
-
-Gerar a imagem Docker.
-
-Fazer o Security Scan da imagem.
+    • Compilar a Aplicação.
+    • Executar testes unitários e de integração.
+    • Gerar a imagem Docker.
+    • Fazer o Security Scan da imagem.
 
 - **AWS ECR**: O CodeBuild faz o push da imagem versionada para o registro de containers.
 - **AWS CodeDeploy / Helm**: O pipeline atualiza o manifesto do Kubernetes no EKS para realizar o rolling update (substituindo os Pods sem interromper o serviço).
@@ -211,7 +205,7 @@ Containers (EKS): Para os serviços core de Limites e Autorização, permitindo 
 
 Serverless (Lambda): Para o _Integration Worker_ que consome a fila SQS, otimizando custo e escala automática conforme o volume da fila.
 
-Deployment Pattern: Estratégia de Canary Deployment ou Blue/Green, permitindo rollback imediato caso a integração com o legado apresente instabilidade.
+Deployment: Estratégia de Canary Deployment ou Blue/Green, permitindo rollback imediato caso a integração com o legado apresente instabilidade.
 
 **_Segurança, Escalabilidade, Monitoramento e Resiliência_**
 
