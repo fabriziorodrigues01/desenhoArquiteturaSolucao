@@ -134,21 +134,21 @@ A solução proposta baseia-se no desacoplamento total entre a Experiência do C
 
 Consistência Eventual (Legado) vs. Consistência Forte (Canais)
 
-    * Decisão: Aceita-se que o sistema legado esteja temporariamente desatualizado em relação à AWS por alguns segundos.
+     Decisão: Aceita-se que o sistema legado esteja temporariamente desatualizado em relação à AWS por alguns segundos.
 
-    * Justificativa: Priorizar a Disponibilidade e a Performance. Manter uma transação síncrona com o legado de 800ms degradaria a experiência do cliente e aumentaria o risco de timeout nos canais digitais durante picos de tráfego.
+     Justificativa: Priorizar a Disponibilidade e a Performance. Manter uma transação síncrona com o legado de 800ms degradaria a experiência do cliente e aumentaria o risco de timeout nos canais digitais durante picos de tráfego.
 
 Complexidade de Implementação vs. Resiliência
 
-    * Decisão: O uso de mensageria (SQS), Streams e Cache aumenta a complexidade do ecossistema e exige maior esforço de monitoramento (Distributed Tracing).
+     Decisão: O uso de mensageria (SQS), Streams e Cache aumenta a complexidade do ecossistema e exige maior esforço de monitoramento (Distributed Tracing).
 
-    * Justificativa: É um custo necessário para garantir que o sistema digital não sofra "efeito cascata" em caso de indisponibilidade do legado. Um sistema simples (direto no legado) seria mais fácil de codificar, mas falharia em escala e sob condições de baixa disponibilidade.
+     Justificativa: É um custo necessário para garantir que o sistema digital não sofra "efeito cascata" em caso de indisponibilidade do legado. Um sistema simples (direto no legado) seria mais fácil de codificar, mas falharia em escala e sob condições de baixa disponibilidade.
 
 Custo Operacional vs. Escalabilidade (Serverless/Managed)
 
-    * Decisão: O uso de serviços gerenciados como DynamoDB On-Demand e ElastiCache pode ter um custo unitário superior a instâncias fixas.
+     Decisão: O uso de serviços gerenciados como DynamoDB On-Demand e ElastiCache pode ter um custo unitário superior a instâncias fixas.
 
-    * Justificativa: O benefício do Time-to-Market e a capacidade de escalar de 1M para 10M de requisições sem intervenção manual (Ops) justificam o investimento, especialmente para eventos críticos como a Black Friday, onde o custo da queda do sistema supera o custo da infraestrutura.
+     Justificativa: O benefício do Time-to-Market e a capacidade de escalar de 1M para 10M de requisições sem intervenção manual (Ops) justificam o investimento, especialmente para eventos críticos como a Black Friday, onde o custo da queda do sistema supera o custo da infraestrutura.
 
 ## **Arquitetura de infraestrutura**
 
@@ -168,11 +168,11 @@ Os componentes para compor esta arquitetura são definidos em Camada de Entrada 
 - **AWS Direct Connect ou VPN Site to Site:** Túnel dedicado e seguro que interliga a VPC da AWS ao Data Center onde o Legado está hospedado.
 - **Amazon DynamoDB:** A camada de dados será composta por bancos de dados gerenciados (NoSQL e In-memory) para suportar a baixa latência exigida. Sugestao de uso com o modelo Global Tables para DR e Point-in-Time Recovery para segurança de dados onde os backups podem ser replicados automaticamente entre Regiões para maior resiliência e com recuperação pontual.
 
-        * **Observação para o caso em que a região principal falhe:**
+        Observação para o caso em que a região principal falhe:
 
-        * **RPO (Recovery Point Objective):** Próximo de zero. Como a escrita no DynamoDB acontece antes de qualquer tentativa de sincronização, o dado nunca é perdido, mesmo que o Legado falhe.
+        RPO (Recovery Point Objective): Próximo de zero. Como a escrita no DynamoDB acontece antes de qualquer tentativa de sincronização, o dado nunca é perdido, mesmo que o Legado falhe.
 
-        * **RTO (Recovery Time Objective):** Segundos. Com Global Tables, a infraestrutura chaveia para outra região AWS se houver um desastre regional.
+        RTO (Recovery Time Objective): Segundos. Com Global Tables, a infraestrutura chaveia para outra região AWS se houver um desastre regional.
 
 - Cache & Idempotência: **Amazon ElastiCache for Redis** (Latência < 1ms para travas de idempotência e saldo projetado).  
 
@@ -223,7 +223,7 @@ Conectividade: AWS Direct Connect (DX) como link principal de baixa latência.
 
 Integração: Implementação de uma Anti-Corruption Layer (ACL) dentro do Worker de integração, responsável por traduzir JSON/REST para os formatos proprietários do legado (ex: Fixed Length/Copybook/DFDL/XML) e aplicar padrões de Circuit Breaker.
 
-    * _Explicação ACL - Durante o processo de migração, quando uma aplicação monolítica é migrada para microsserviços, pode haver mudanças na semântica do modelo de domínio dos recém-migrados serviço. Quando as características dentro do monólito são obrigadas a chamar esses microsserviços, o As chamadas devem ser roteadas para o serviço migrado sem exigir alterações na chamada serviços. O padrão ACL permite que o monólito chame os microserviços de forma transparente por atuando como um adaptador ou camada de fachada que traduz as chamadas para as mais novas Semântica._
+    Explicação ACL - Durante o processo de migração, quando uma aplicação monolítica é migrada para microsserviços, pode haver mudanças na semântica do modelo de domínio dos recém-migrados serviço. Quando as características dentro do monólito são obrigadas a chamar esses microsserviços, o As chamadas devem ser roteadas para o serviço migrado sem exigir alterações na chamada serviços. O padrão ACL permite que o monólito chame os microserviços de forma transparente por atuando como um adaptador ou camada de fachada que traduz as chamadas para as mais novas Semântica.
 
 ### **_Escala em Cenários de Pico (Black Friday)_**
 
