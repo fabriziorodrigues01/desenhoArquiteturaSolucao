@@ -152,7 +152,7 @@ Custo Operacional vs. Escalabilidade (Serverless/Managed)
 
 ## **Arquitetura de infraestrutura**
 
-**_Pilha de Serviços_**
+### **_Pilha de Serviços_**
 
 A infraestrutura será baseada em uma topologia Híbrida e Multi-AZ na AWS.
 
@@ -168,11 +168,11 @@ Os componentes para compor esta arquitetura são definidos em Camada de Entrada 
 - **AWS Direct Connect ou VPN Site to Site:** Túnel dedicado e seguro que interliga a VPC da AWS ao Data Center onde o Legado está hospedado.
 - **Amazon DynamoDB:** A camada de dados será composta por bancos de dados gerenciados (NoSQL e In-memory) para suportar a baixa latência exigida. Sugestao de uso com o modelo Global Tables para DR e Point-in-Time Recovery para segurança de dados onde os backups podem ser replicados automaticamente entre Regiões para maior resiliência e com recuperação pontual.
 
-    **Observação para o caso em que a região principal falhe:**
+        * **Observação para o caso em que a região principal falhe:**
 
-    **RPO (Recovery Point Objective):** Próximo de zero. Como a escrita no DynamoDB acontece antes de qualquer tentativa de sincronização, o dado nunca é perdido, mesmo que o Legado falhe.
+        * **RPO (Recovery Point Objective):** Próximo de zero. Como a escrita no DynamoDB acontece antes de qualquer tentativa de sincronização, o dado nunca é perdido, mesmo que o Legado falhe.
 
-    **RTO (Recovery Time Objective):** Segundos. Com Global Tables, a infraestrutura chaveia para outra região AWS se houver um desastre regional.
+        * **RTO (Recovery Time Objective):** Segundos. Com Global Tables, a infraestrutura chaveia para outra região AWS se houver um desastre regional.
 
 - Cache & Idempotência: **Amazon ElastiCache for Redis** (Latência < 1ms para travas de idempotência e saldo projetado).  
 
@@ -191,7 +191,7 @@ Os componentes para compor esta arquitetura são definidos em Camada de Entrada 
 
 ![Arquitetura Cloud](./imagens/diagrama%20arquitetura%20-%20draft.png)
 
-**_Estratégias para Consistência e Atualização em Tempo Real_**
+### **_Estratégias para Consistência e Atualização em Tempo Real_**
 
 Armazenamento de estado e cache: O ajuste de limite é gravado primeiro no DynamoDB (Persistência) e imediatamente no Redis (Estado Projetado).
 
@@ -199,7 +199,7 @@ Consistência Forte no Canal: O Autorizador de Saldo consulta o Redis, garantind
 
 Consistência Eventual no Legado: A sincronização com o Legado ocorre de forma assíncrona, garantindo que a lentidão do legado não bloqueie a experiência do usuário
 
-**_Estratégia de Deployment_**
+### **_Estratégia de Deployment_**
 
 Containers (EKS): Para os serviços core de Limites e Autorização, permitindo controle fino de recursos e escalabilidade.
 
@@ -207,7 +207,7 @@ Serverless (Lambda): Para o _Integration Worker_ que consome a fila SQS, otimiza
 
 Deployment: Estratégia de Canary Deployment ou Blue/Green, permitindo rollback imediato caso a integração com o legado apresente instabilidade.
 
-**_Segurança, Escalabilidade, Monitoramento e Resiliência_**
+### **_Segurança, Escalabilidade, Monitoramento e Resiliência_**
 
 Segurança: AWS WAF contra ataques Layer 7 e IAM Roles for Service Accounts (IRSA) para privilégio mínimo.
 
@@ -217,15 +217,15 @@ Monitoramento: Amazon CloudWatch (Métricas e Alertas), AWS X-Ray (Tracing distr
 
 Resiliência: Uso de Dead Letter Queues (DLQ) para isolar falhas de integração e Multi-AZ Deployment para suportar quedas de infraestrutura da AWS.
 
-**_Comunicação com o Sistema Legado_**
+### **_Comunicação com o Sistema Legado_**
 
 Conectividade: AWS Direct Connect (DX) como link principal de baixa latência.
 
 Integração: Implementação de uma Anti-Corruption Layer (ACL) dentro do Worker de integração, responsável por traduzir JSON/REST para os formatos proprietários do legado (ex: Fixed Length/Copybook/DFDL/XML) e aplicar padrões de Circuit Breaker.
 
-_Explicação ACL - Durante o processo de migração, quando uma aplicação monolítica é migrada para microsserviços, pode haver mudanças na semântica do modelo de domínio dos recém-migrados serviço. Quando as características dentro do monólito são obrigadas a chamar esses microsserviços, o As chamadas devem ser roteadas para o serviço migrado sem exigir alterações na chamada serviços. O padrão ACL permite que o monólito chame os microserviços de forma transparente por atuando como um adaptador ou camada de fachada que traduz as chamadas para as mais novas Semântica._
+    * _Explicação ACL - Durante o processo de migração, quando uma aplicação monolítica é migrada para microsserviços, pode haver mudanças na semântica do modelo de domínio dos recém-migrados serviço. Quando as características dentro do monólito são obrigadas a chamar esses microsserviços, o As chamadas devem ser roteadas para o serviço migrado sem exigir alterações na chamada serviços. O padrão ACL permite que o monólito chame os microserviços de forma transparente por atuando como um adaptador ou camada de fachada que traduz as chamadas para as mais novas Semântica._
 
-**_Escala em Cenários de Pico (Black Friday)_**
+### **_Escala em Cenários de Pico (Black Friday)_**
 
 Para suportar o salto de 1M para 10M de requisições:
 
