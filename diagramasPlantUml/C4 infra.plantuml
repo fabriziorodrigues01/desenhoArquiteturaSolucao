@@ -18,10 +18,12 @@ System_Boundary(aws_region, "AWS Region (sa-east-1)") {
         Container(pipeline, "Pipeline de Deploy", "CodeCommit/Build/Helm", "Orquestra a entrega do código Java refatorado")
     }
 
+    System_Boundary(edge_security, "Borda") {
+	Container(apigw, "API Gateway", "AWS Gateway", "Entrypoint")
+    }
+        
     System_Boundary(compute, "Compute Layer (Amazon EKS)") {
-        Container(apigw, "API Gateway", "AWS Gateway", "Entrypoint: Throttling, Auth e Versionamento")
-        Container(pod_limit, "Pod A: Gestor de Limites", "Java / Spring", "Orquestra workflow, Idempotência e Risco")
-        Container(pod_auth, "Pod B: Autorizador de Saldo", "Java / Spring", "Autorização de transações < 2ms")
+        Container(pod_limit, "Pod A: Gestor de Limites", "Java / Spring", "Orquestra workflow, Idempotência e Risco")     
     }
 
     System_Boundary(storage, "State & Data Layer") {
@@ -33,6 +35,8 @@ System_Boundary(aws_region, "AWS Region (sa-east-1)") {
         Container(lambda, "Integration Worker", "AWS Lambda", "Worker assíncrono orientado a eventos (CDC)")
         ContainerQueue(sqs, "Amazon SQS FIFO", "SQS", "Buffer para isolar falhas no Direct Connect")
     }
+
+    
 }
 
 ' Conectividade e On-Premise
@@ -59,9 +63,4 @@ Rel(sqs, dx, "Consumo Controlado")
 Rel(dx, legacy, "Sincroniza Legado")
 Rel(dx, brand, "Sincroniza Bandeira (STIP)")
 Rel(lambda, push_svc, "5. Notifica Sucesso", "SNS")
-
-' Autorização
-Rel(customer, pod_auth, "Realiza Compra", "Auth API")
-Rel(pod_auth, redis, "Consulta Saldo Projetado", "Read-only")
-
 @enduml

@@ -18,11 +18,11 @@ package "AWS Region (sa-east-1)" {
     package "DevSecOps (CI/CD)" {
         [Pipeline: CodeCommit/Build/ECR/Helm] as pipeline #LightBlue
     }
+     [Amazon API Gateway] as apigw #GhostWhite
 
     package "Compute Layer (Amazon EKS)" {
-        [Amazon API Gateway] as apigw #GhostWhite
+       
         [Pod A: Gestor de Limites (Java)] as limit_svc #White
-        [Pod B: Autorizador de Saldo (Java)] as auth_svc #White
     }
 
     package "State & Data Layer" {
@@ -68,8 +68,6 @@ dx -down-> mainframe : "Sincroniza Legado"
 dx -down-> card_brand : "Update STIP"
 worker -up-> push : "5. Notifica Sucesso"
 
-' Autorização
-auth_svc -up-> redis : "Consulta Saldo Projetado"
 
 note bottom of "AWS Region (sa-east-1)"
   **Resiliência Regional:**

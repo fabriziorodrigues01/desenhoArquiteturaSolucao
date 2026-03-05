@@ -10,7 +10,6 @@ end box
 
 box "Business Layer (EKS)" #AliceBlue
     participant "Worker Limit Management" as SVC
-    participant "Worker Authorize balance" as Proxy
     participant "Motor de Risco\n(SaaS)" as Risk
 end box
 
@@ -44,7 +43,7 @@ Risk --> SVC : Aprovado (Score OK)
 SVC -> Dynamo : Put Item (Novo Limite R$ 2,00 / PENDING)
 SVC -> Redis : UPDATE (Saldo Projetado)
 
-Redis -> Proxy : Limite Atualizado para autorizacao
+Redis -> SVC: Limite Atualizado para autorizacao
 
 SVC -> Push : Trigger "Ajuste em Processamento"
 SVC --> GW : 201 Created
@@ -79,9 +78,10 @@ deactivate SQS
 
 == Fluxo de Autorização (Paralelo) ==
 
-App -> Proxy : Realizar Compra (Cartão)
-Proxy -> Redis : GET Projected_Balance
-Redis --> Proxy : R$ 2,00
-Proxy --> App : Compra Autorizada (Real-time)
+App -> GW : POST /v1/purchase
+GW -> SVC : Realizar Compra (Cartão)
+SVC -> Redis : GET Projected_Balance
+Redis --> SVC : R$ 2,00
+SVC --> App : Compra Autorizada (Real-time)
 
 @enduml
