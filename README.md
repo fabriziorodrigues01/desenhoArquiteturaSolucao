@@ -199,7 +199,7 @@ Containers (EKS): Usado no serviço principal de Limites para termos controle to
 
 Serverless (Lambda): Processa os dados da fila SQS de forma automática e barata, já que só funciona quando tem tarefa pendente.
 
-Estratégia de atualização: Usaremos as estratégias Canary ou Blue/Green. Isso permite desfazer as mudanças na hora se a conexão com os sistemas antigos der problema
+Estratégia de atualização: Uso do Blue/Green. Isso permite desfazer as mudanças na hora se a conexão com os sistemas antigos der problema com sem risco de ficar inativo o ambiente.
 
 
 ### **_Segurança, Escalabilidade, Monitoramento e Resiliência_**
@@ -207,7 +207,7 @@ Estratégia de atualização: Usaremos as estratégias Canary ou Blue/Green. Iss
 Segurança: AWS WAF atuará como um escudo para bloquear ataques e invasões vindos da internet.
 
 Escalabilidade: HPA e Cluster Autoscaler: O sistema cria novas cópias de si mesmo e contrata mais "espaço" em servidores automaticamente quando o número de acessos sobe.
-Banco de Dados On-Demand: O banco de dados cresce e diminui sozinho, e só pagamos pelo que for realmente usado.
+Banco de Dados On-Demand: O banco de dados cresce e diminui sozinho, e só paga pelo que for realmente usado.
 
 Monitoramento: Amazon CloudWatch (funciona como um painel de controle que nos avisa (com alertas) se algo sair do normal), AWS X-Ray (acompanha o "caminho" completo de um pedido, desde o celular do cliente até os sistemas alvo, ajudando a achar onde está a lentidão).
 
