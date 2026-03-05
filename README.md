@@ -62,7 +62,7 @@ Atualmente o cliente pode consultar e ajustar seu limite do cartão de crédito 
 
 Identificado a ausência destes elementos no escopo original e que são vitais para a conclusividade da experiência do Cliente:
 
-• Bandeira (Visa/Mastercard): Essencial para o item 2 (transações offline/autorização). Elas precisam receber a atualização do limite (API) para autorizar transações na ponta.
+• Bandeira (Visa/Mastercard): Autorizar o limite nas maquininhas para transações offline. Elas precisam receber a atualização do limite (API) para autorizar transações na ponta.
 
 • Motor de Risco/Fraude: Alterar limite não é apenas uma troca de valor; exige uma validação de risco em tempo real.
 
@@ -88,7 +88,7 @@ O fluxo abaixo mantém a experiência fluida em canais digitais, mesmo com um le
 
 - **1 Request Omnichannel:** O cliente solicita o ajuste via App/Web. A requisição carrega uma chave Idempotente única gerada pelo dispositivo.
 
-- **2 Camada Edge Security:** O tráfego passa pelo **Amazon CloudFront** e **AWS WAF** filtrando a requisição, sendo autenticado no **API Gateway**.
+- **2 Camada Edge:** O tráfego passa pelo **API Gateway**.
 
 - **3 Check de Idempotência (Redis):** O Gestor de limite (**EKS**) consulta o **Amazon ElastiCache (Redis)**. Se a chave já existir, o sistema retorna o status da transação anterior em menos tempo, evitando processamento duplicado quando houver picos de acessos por exemplo na black Friday.
 
@@ -97,8 +97,6 @@ O fluxo abaixo mantém a experiência fluida em canais digitais, mesmo com um le
 - **6 Persistência (DynamoDB):** O limite é gravado no **Amazon DynamoDB** com o status PENDING_SYNC (para aguardar os bloqueios serem liberados se outra transação modificar o mesmo item). O banco escala instantaneamente para suportar a carga da Black Friday em um trafego imprevisível no modo (**On-Demand**).
 
 - **7 Atualização do Estado Projetado (Redis):** Simultaneamente, o **Redis** é atualizado com o novo valor de limite.
-
-     * _Resultado:_ O worker **Autoriza Saldo** já passa a considerar este valor para novas compras imediatamente.
 
 - **8 Confirmação Otimista (Push 1):** O sistema dispara uma notificação via **Amazon SNS/Push** informando que o pedido foi recebido e o limite já está disponível para uso.
 
@@ -128,13 +126,13 @@ A solução proposta baseia-se no desacoplamento total entre a Experiência do C
 
 **Consistência e Confiabilidade**: O uso do Redis (ElastiCache) como State Store resolve o problema de idempotência e concorrência em alta escala. Ao atualizar o Redis e o DynamoDB antes de responder ao cliente, é garantido que qualquer transação subsequente (autorização) consulte o saldo mais atualizado, cumprindo o requisito de "tempo real".
 
-**Resiliência (Pilar de Confiabilidade)**: A arquitetura utiliza o padrão Store-and-Forward. Caso o legado esteja offline ou instável, as operações de ajuste de limite não são perdidas; elas permanecem persistidas na fila com lógica de retentativa automática e DLQ, garantindo 99,99% de disponibilidade para os canais digitais.
+**Resiliência (Pilar de Confiabilidade)**: Caso o legado esteja offline ou instável, as operações de ajuste de limite não são perdidas; elas permanecem persistidas na fila com lógica de retentativa automática e DLQ, garantindo 99,99% de disponibilidade para os canais digitais.
 
 ### **_Decisão de Design Adotado_**
 
 Consistência Eventual (Legado) vs. Consistência Forte (Canais)
 
-     Decisão: Aceita-se que o sistema legado esteja temporariamente desatualizado em relação à AWS por alguns segundos.
+     Decisão: Será permitido que o sistema legado esteja temporariamente desatualizado em relação à AWS por alguns segundos.
 
      Justificativa: Priorizar a Disponibilidade e a Performance. Manter uma transação síncrona com o legado de 800ms degradaria a experiência do cliente e aumentaria o risco de timeout nos canais digitais durante picos de tráfego.
 
@@ -142,13 +140,13 @@ Complexidade de Implementação vs. Resiliência
 
      Decisão: O uso de mensageria (SQS), Streams e Cache aumenta a complexidade do ecossistema e exige maior esforço de monitoramento (Distributed Tracing).
 
-     Justificativa: É um custo necessário para garantir que o sistema digital não sofra "efeito cascata" em caso de indisponibilidade do legado. Um sistema simples (direto no legado) seria mais fácil de codificar, mas falharia em escala e sob condições de baixa disponibilidade.
+     Justificativa: É um custo necessário para garantir que o sistema digital não sofra "efeito cascata" em caso de indisponibilidade do legado.
 
 Custo Operacional vs. Escalabilidade (Serverless/Managed)
 
      Decisão: O uso de serviços gerenciados como DynamoDB On-Demand e ElastiCache pode ter um custo unitário superior a instâncias fixas.
 
-     Justificativa: O benefício do Time-to-Market e a capacidade de escalar de 1M para 10M de requisições sem intervenção manual (Ops) justificam o investimento, especialmente para eventos críticos como a Black Friday, onde o custo da queda do sistema supera o custo da infraestrutura.
+     Justificativa: A capacidade de escalar de 1M para 10M de requisições sem intervenção manual (Ops) justificam o investimento, especialmente para eventos críticos como a Black Friday, onde o custo da queda do sistema supera o custo da infraestrutura.
 
 ## **Arquitetura de infraestrutura**
 
@@ -161,10 +159,6 @@ Os componentes para compor esta arquitetura são definidos em Camada de Entrada 
 - **Amazon API Gateway:** Porta de entrada para os canais. Ele recebe a requisição REST/JSON, faz o throttling (controle de vazão) e gerencia o versionamento da API.
 - **AWS Lambda:** Terá o papel de workers de integração leves e orientados a eventos.
 - **AWS EKS microserviço:** Atua como orquestrador central para os microserviços de negócio, garantindo alta disponibilidade e portabilidade.
-- **AWS EKS microserviço Pod A e Pod B:**
-    • Gestor de Limites
-    •  Autorizador de Saldo.
-
 - **AWS Direct Connect ou VPN Site to Site:** Túnel dedicado e seguro que interliga a VPC da AWS ao Data Center onde o Legado está hospedado.
 - **Amazon DynamoDB:** A camada de dados será composta por bancos de dados gerenciados (NoSQL e In-memory) para suportar a baixa latência exigida. Sugestao de uso com o modelo Global Tables para DR e Point-in-Time Recovery para segurança de dados onde os backups podem ser replicados automaticamente entre Regiões para maior resiliência e com recuperação pontual.
 
@@ -177,7 +171,7 @@ Os componentes para compor esta arquitetura são definidos em Camada de Entrada 
 - Cache & Idempotência: **Amazon ElastiCache for Redis** (Latência < 1ms para travas de idempotência e saldo projetado).  
 
 - Amazon SQS FIFO (Garantia de ordem e buffer de resiliência): será para isolar falhas no **Direct Connect.**
-- **AWS CodeCommit:** Repositório privado Git onde o código refatorado (COBOL -> Java) é armazenado
+- **AWS CodeCommit:** Repositório privado Git onde o código é armazenado
 - **AWS CodeBuild:** Acionado pelo Pipeline para:
     • Compilar a Aplicação.
     • Executar testes unitários e de integração.
@@ -195,27 +189,30 @@ Os componentes para compor esta arquitetura são definidos em Camada de Entrada 
 
 Armazenamento de estado e cache: O ajuste de limite é gravado primeiro no DynamoDB (Persistência) e imediatamente no Redis (Estado Projetado).
 
-Consistência Forte no Canal: O Autorizador de Saldo consulta o Redis, garantindo que o cliente possa utilizar o novo limite em milissegundos após a confirmação no App.
+Consistência Forte no Canal: O Gestor de Limites consulta o Redis, garantindo que o cliente possa utilizar o novo limite em milissegundos após a confirmação nos canais.
 
 Consistência Eventual no Legado: A sincronização com o Legado ocorre de forma assíncrona, garantindo que a lentidão do legado não bloqueie a experiência do usuário
 
 ### **_Estratégia de Deployment_**
 
-Containers (EKS): Para os serviços core de Limites e Autorização, permitindo controle fino de recursos e escalabilidade.
+Containers (EKS): Usado no serviço principal de Limites para termos controle total do sistema e ele crescer conforme o uso.
 
-Serverless (Lambda): Para o _Integration Worker_ que consome a fila SQS, otimizando custo e escala automática conforme o volume da fila.
+Serverless (Lambda): Processa os dados da fila SQS de forma automática e barata, já que só funciona quando tem tarefa pendente.
 
-Deployment: Estratégia de Canary Deployment ou Blue/Green, permitindo rollback imediato caso a integração com o legado apresente instabilidade.
+Estratégia de atualização: Usaremos as estratégias Canary ou Blue/Green. Isso permite desfazer as mudanças na hora se a conexão com os sistemas antigos der problema
+
 
 ### **_Segurança, Escalabilidade, Monitoramento e Resiliência_**
 
-Segurança: AWS WAF contra ataques Layer 7 e IAM Roles for Service Accounts (IRSA) para privilégio mínimo.
+Segurança: AWS WAF atuará como um escudo para bloquear ataques e invasões vindos da internet.
 
-Escalabilidade: HPA (Horizontal Pod Autoscaler) para os containers e Cluster Autoscaler para os nós EC2. Banco de dados em modo On-Demand.
+Escalabilidade: HPA e Cluster Autoscaler: O sistema cria novas cópias de si mesmo e contrata mais "espaço" em servidores automaticamente quando o número de acessos sobe.
+Banco de Dados On-Demand: O banco de dados cresce e diminui sozinho, e só pagamos pelo que for realmente usado.
 
-Monitoramento: Amazon CloudWatch (Métricas e Alertas), AWS X-Ray (Tracing distribuído para rastrear a transação do App até o Legado).
+Monitoramento: Amazon CloudWatch (funciona como um painel de controle que nos avisa (com alertas) se algo sair do normal), AWS X-Ray (acompanha o "caminho" completo de um pedido, desde o celular do cliente até os sistemas alvo, ajudando a achar onde está a lentidão).
 
-Resiliência: Uso de Dead Letter Queues (DLQ) para isolar falhas de integração e Multi-AZ Deployment para suportar quedas de infraestrutura da AWS.
+Resiliência: Uso de Dead Letter Queues (DLQ) pois se um processo der erro, ele é colocado em uma "fila de espera" separada para não travar o resto do sistema.
+
 
 ### **_Comunicação com o Sistema Legado_**
 
@@ -227,13 +224,14 @@ Integração: Implementação de uma Anti-Corruption Layer (ACL) dentro do Worke
 
 ### **_Escala em Cenários de Pico (Black Friday)_**
 
-Para suportar o salto de 1M para 10M de requisições:
 
-Throttling Proativo: O API Gateway limita o excesso de chamadas para proteger o ecossistema.
+Para aguentar o salto de 1 milhão para 10 milhões de acessos:
+Controle de Tráfego (Throttling): O sistema barra o excesso de acessos para evitar que o serviço fique lento ou saia do ar por sobrecarga.
 
-Elasticidade de Dados: O DynamoDB escala automaticamente sem necessidade de pré-provisionamento de RCU/WCU.
+Banco de Dados Flexível: O banco de dados aumenta sua capacidade sozinho conforme a demanda, sem precisarmos configurar nada manualmente.
 
-Buffer de Mensageria: O SQS absorve o pico de 1.150 TPS (transações por segundo), servindo como um "amortecedor" que entrega as mensagens ao legado em uma vazão que o sistema consiga processar, evitando uma sobrecarga.
+Mensageria (SQS): Funciona como uma fila que segura o excesso de mensagens e os entrega aos poucos para os sistemas antigos.
+
 
 ![Arquitetura C4](./imagens/C4%20arquitetura%20infra.png)
 
