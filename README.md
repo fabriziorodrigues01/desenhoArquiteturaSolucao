@@ -82,7 +82,7 @@ O **Sistema de Bandeira** precisa ser notificada do novo limite para que, se o c
 
 O uso da mensageria (caixa SQS) tem um papel importante para o isolamento de falha, pois se o "Sistema Legado" falhar e o cliente já ter recebido a notificação de OK, o processo não será interrompido. A idéia é que o cliente receba a resposta muito antes do Legado ou da Bandeira serem atualizados garantidos por um back-end resiliente.
 
-### **_Fluxo de dados (Transação completa e Padrão de resiliência)_**
+### **_Fluxo de dados (Transação completa com padrão de resiliência)_**
 
 O fluxo abaixo mantém a experiência fluida em canais digitais, mesmo com um legado síncrono e com latência de 800ms.
 
@@ -120,7 +120,7 @@ O fluxo abaixo mantém a experiência fluida em canais digitais, mesmo com um le
 
 ### **_Justificativa Técnica_**
 
-A solução proposta baseia-se no desacoplamento total entre a Experiência do Cliente (Real-Time) e o Registro Financeiro (Legacy Sync).
+A solução proposta baseia-se no desacoplamento total entre a Experiência do Cliente (tempo real) e o Registro no Legado.
 
 **Performance e Escalabilidade (Pilar de Eficiência)**: Utilização do Amazon EKS com HPA (Horizontal Pod Autoscaler) e DynamoDB On-Demand para suportar a elasticidade necessária (de 1M para 10M de requisições). O gargalo do sistema legado (800ms) é isolado por uma camada de mensageria (SQS FIFO), garantindo que a latência percebida pelo usuário seja ditada apenas pela infraestrutura AWS (~30ms a 45ms).
 
@@ -130,19 +130,19 @@ A solução proposta baseia-se no desacoplamento total entre a Experiência do C
 
 ### **_Decisão de Design Adotado_**
 
-Consistência Eventual (Legado) vs. Consistência Forte (Canais)
+Consistência Eventual (Legado) versus Consistência Forte (Canais)
 
      Decisão: Será permitido que o sistema legado esteja temporariamente desatualizado em relação à AWS por alguns segundos.
 
      Justificativa: Priorizar a Disponibilidade e a Performance. Manter uma transação síncrona com o legado de 800ms degradaria a experiência do cliente e aumentaria o risco de timeout nos canais digitais durante picos de tráfego.
 
-Complexidade de Implementação vs. Resiliência
+Complexidade de Implementação versus Resiliência
 
      Decisão: O uso de mensageria (SQS), Streams e Cache aumenta a complexidade do ecossistema e exige maior esforço de monitoramento (Distributed Tracing).
 
      Justificativa: É um custo necessário para garantir que o sistema digital não sofra "efeito cascata" em caso de indisponibilidade do legado.
 
-Custo Operacional vs. Escalabilidade (Serverless/Managed)
+Custo Operacional versus Escalabilidade (Serverless/Managed)
 
      Decisão: O uso de serviços gerenciados como DynamoDB On-Demand e ElastiCache pode ter um custo unitário superior a instâncias fixas.
 
