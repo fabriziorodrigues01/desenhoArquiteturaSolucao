@@ -24,15 +24,13 @@ Contents
 
 2\. Business Scenario 5
 
-2.1 Current State View - AS-IS 5
+2.1 Current State View 5
 
 2.2 Opportunities and Solutions - TO-BE 8
 
-2.2.1 Scenario 1: Hybrid (Java + MQ + Mainframe 8 Refactoring
+2.2.1 Cenário 1: Recursos utilizados
 
-2.2.2 Scenario 2: Migration Cloud 11
-
-3.Annexes 15
+3.Appendices 15
 
 # Solution Description
 
