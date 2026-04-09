@@ -91,7 +91,7 @@ Os componentes para compor esta arquitetura são:
 
 - **Base de conhecimento:**
 
-Export ServiceNow → S3, exemplo: categorias.json, categorias.json.
+- Export ServiceNow → S3, exemplo: categorias.json, categorias.json.
 
 - **Indexação (Embedding)**, Lambda (batch ou on-demand), uso do Titan Embeddings, armazena no OpenSearch.
 - **AWS S3:** Os arquivos extraídos a partir do ServiceNow são gravados com políticas de ciclo de vida para reduzir custos de armazenamento a longo prazo.
@@ -100,14 +100,11 @@ Export ServiceNow → S3, exemplo: categorias.json, categorias.json.
 - **AWS Systems Manager (SSM)** Parameter Store: Centraliza configurações, permitindo os configurar parâmetros (como URLs de serviços externos) sem precisar recompilar o código ou alterar arquivos YAML dentro do Kubernetes.
 - **AWS Lambda**:
 
-Recebe descrição
-
-Gera embedding
-
-Busca similaridade no OpenSearch
-
-Monta contexto  
-Envia para Bedrock
+- Recebe descrição
+- Gera embedding
+- Busca similaridade no OpenSearch
+- Monta contexto  
+- Envia para Bedrock
 
 ![Diagrama C4](./imagens/diagramaC4.png)
 
