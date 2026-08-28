@@ -1,5 +1,6 @@
 # devin lab terraform data products
 - Como isso fica no Devin
+```text
 DEVIN
   │
   │ "Crie um Data Product para..."
@@ -38,7 +39,7 @@ validate_terraform
   │
   ▼
 GIT / PR
-
+```
 ------
 
 E há uma decisão muito importante
@@ -56,11 +57,12 @@ Depois podemos evoluir para uma segunda camada, se necessário, onde o CI/CD da 
 Próximo passo
 
 Agora temos o contrato da Skill + MCP. O próximo passo natural é construir o Template Registry Terraform V1, começando pelos 4 templates fundamentais:
-
-**SQL → TEMP → SOR
+```text
+SQL → TEMP → SOR
 Kafka → Lambda Sink → TEMP → SOR
 SOR → SOT
 SOT → SPEC com Step Functions + Glue**
+```
 
 A partir desses quatro templates, conseguimos montar uma primeira versão realmente funcional da Data Product Factory.
 
